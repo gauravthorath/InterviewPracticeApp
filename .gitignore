@@ -1,0 +1,11 @@
+# Secrets — never commit API keys
+.env
+
+# Virtual environment — machine-specific, recreated with `uv sync`
+.venv/
+
+# Python bytecode cache
+__pycache__/
+
+# Personal study notes — not part of the submission
+LEARNING.md
