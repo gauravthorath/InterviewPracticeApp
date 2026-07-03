@@ -54,17 +54,15 @@ with st.sidebar:
         st.session_state.messages = []
         st.rerun()
 
-    # Temporary smoke test: verify key/network/model with ONE trivial call,
-    # isolated from the chat loop. Removed once the real integration works.
-    if st.button("Test connection"):
-        try:
-            resp = client.chat.completions.create(
-                model=MODEL,
-                messages=[{"role": "user", "content": "Say 'connection OK' and nothing else."}],
-            )
-            st.success(resp.choices[0].message.content)
-        except Exception as e:
-            st.error(f"API call failed: {e}")
+# --- System prompt ----------------------------------------------------------
+# The model's standing instructions, rebuilt from the sidebar on every rerun
+# and sent fresh with every API call (the API itself remembers nothing).
+system_prompt = (
+    f"You are a {persona} interviewer conducting a mock job interview for a "
+    f"{seniority} {role} position. Ask ONE interview question at a time. "
+    f"After the candidate answers, give brief constructive feedback on their "
+    f"answer, then ask the next question. Stay in character throughout."
+)
 
 # --- Chat history ----------------------------------------------------------
 # The whole script reruns on every interaction, so a plain list would reset
@@ -86,10 +84,22 @@ for msg in st.session_state.messages:
 if user_input := st.chat_input("Your answer…"):
     st.session_state.messages.append({"role": "user", "content": user_input})
 
-    # Placeholder reply — replaced by a real OpenRouter call in step 6.
-    reply = (
-        f"*(AI coming soon — {seniority} {role} interview, {persona} style)* "
-        f"You said: {user_input}"
-    )
-    st.session_state.messages.append({"role": "assistant", "content": reply})
-    st.rerun()
+    # The API is stateless: every call must resend the system prompt plus the
+    # ENTIRE conversation so far. Our session_state history is already in the
+    # exact message format the API expects.
+    try:
+        with st.spinner("Interviewer is thinking…"):
+            response = client.chat.completions.create(
+                model=MODEL,
+                messages=[{"role": "system", "content": system_prompt}]
+                + st.session_state.messages,
+            )
+        reply = response.choices[0].message.content
+        st.session_state.messages.append({"role": "assistant", "content": reply})
+        st.rerun()  # repaint so the new messages appear in the history above
+    except Exception as e:
+        # Don't crash the app on network/API hiccups — surface the error and
+        # drop the unanswered user message so they can simply retry.
+        # (No rerun here: a rerun would immediately erase this error message.)
+        st.session_state.messages.pop()
+        st.error(f"The interviewer couldn't respond ({e}). Please try again.")
