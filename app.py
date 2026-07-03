@@ -28,10 +28,34 @@ with st.sidebar:
         ["Friendly Coach", "Neutral Professional", "Tough Bar-Raiser"],
     )
 
-# --- Main area -------------------------------------------------------------
-# Temporary echo so we can SEE the rerun model at work; the chat UI
-# replaces this in the next step.
-if role:
-    st.write(f"Preparing a **{seniority} {role}** interview with a **{persona}** interviewer.")
-else:
-    st.info("Enter a job role in the sidebar to begin.")
+    if st.button("Start new interview"):
+        st.session_state.messages = []
+        st.rerun()
+
+# --- Chat history ----------------------------------------------------------
+# The whole script reruns on every interaction, so a plain list would reset
+# to [] each time. st.session_state persists across reruns (per browser tab).
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+# Repaint the full history on every rerun.
+# Each message dict is {"role": ..., "content": ...} — deliberately the exact
+# shape the OpenRouter/OpenAI API expects, so this list becomes our API
+# payload in a later step.
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
+
+# --- Chat input ------------------------------------------------------------
+# st.chat_input returns None on most reruns; it returns the typed text only
+# on the rerun immediately after the user presses Enter.
+if user_input := st.chat_input("Your answer…"):
+    st.session_state.messages.append({"role": "user", "content": user_input})
+
+    # Placeholder reply — replaced by a real OpenRouter call in step 6.
+    reply = (
+        f"*(AI coming soon — {seniority} {role} interview, {persona} style)* "
+        f"You said: {user_input}"
+    )
+    st.session_state.messages.append({"role": "assistant", "content": reply})
+    st.rerun()
