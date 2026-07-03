@@ -1,6 +1,28 @@
+import os
+
 import streamlit as st
+from dotenv import load_dotenv
+from openai import OpenAI
+
+# Load OPENROUTER_API_KEY from the (gitignored) .env file into the
+# process environment. Keys live in .env — never in code — because
+# public GitHub repos are scraped for secrets within minutes of a push.
+load_dotenv()
+API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 st.title("Interview Practice 🎤")
+
+if not API_KEY:
+    st.error(
+        "Missing OPENROUTER_API_KEY. Copy `.env.example` to `.env` and add "
+        "your key from https://openrouter.ai/keys, then reload."
+    )
+    st.stop()  # halt the script here — nothing below runs without a key
+
+# OpenRouter clones the OpenAI API shape, so the official openai client
+# works as-is — we only point base_url at OpenRouter.
+client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=API_KEY)
+MODEL = "openai/gpt-5-mini"
 
 # --- Sidebar: interview configuration -------------------------------------
 # Convention: sidebar = settings, main area = the conversation itself.
@@ -31,6 +53,18 @@ with st.sidebar:
     if st.button("Start new interview"):
         st.session_state.messages = []
         st.rerun()
+
+    # Temporary smoke test: verify key/network/model with ONE trivial call,
+    # isolated from the chat loop. Removed once the real integration works.
+    if st.button("Test connection"):
+        try:
+            resp = client.chat.completions.create(
+                model=MODEL,
+                messages=[{"role": "user", "content": "Say 'connection OK' and nothing else."}],
+            )
+            st.success(resp.choices[0].message.content)
+        except Exception as e:
+            st.error(f"API call failed: {e}")
 
 # --- Chat history ----------------------------------------------------------
 # The whole script reruns on every interaction, so a plain list would reset
