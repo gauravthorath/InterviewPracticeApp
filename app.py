@@ -37,17 +37,29 @@ with st.sidebar:
         "Product Manager",
         "Custom…",
     ]
-    role = st.selectbox("Job role", ROLES)
+    # st.pills renders chips instead of a dropdown: every option is visible
+    # at once, one tap to switch. Caveat vs selectbox: clicking the selected
+    # chip DEselects it and the widget returns None, so each pills value
+    # gets a fallback below.
+    role = st.pills("Job role", ROLES, default="Backend Developer")
     if role == "Custom…":
         # Conditional UI: this text input only exists while "Custom…" is
         # selected — the `if` re-decides on every rerun.
         role = st.text_input("Enter your job role", placeholder="e.g. DevOps Engineer")
+    role = role or "Backend Developer"
 
-    seniority = st.selectbox("Seniority", ["Junior", "Mid-level", "Senior"])
+    seniority = (
+        st.pills("Seniority", ["Junior", "Mid-level", "Senior"], default="Mid-level")
+        or "Mid-level"
+    )
 
-    persona = st.selectbox(
-        "Interviewer style",
-        ["Friendly Coach", "Neutral Professional", "Tough Bar-Raiser"],
+    persona = (
+        st.pills(
+            "Interviewer style",
+            ["Friendly Coach", "Neutral Professional", "Tough Bar-Raiser"],
+            default="Friendly Coach",
+        )
+        or "Friendly Coach"
     )
 
     if st.button("Start new interview"):
