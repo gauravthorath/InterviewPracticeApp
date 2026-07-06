@@ -41,28 +41,39 @@ with st.sidebar:
     # at once, one tap to switch. Caveat vs selectbox: clicking the selected
     # chip DEselects it and the widget returns None, so each pills value
     # gets a fallback below.
-    role = st.pills("Job role", ROLES, default="Backend Developer")
+    role = st.pills("💼 Job role", ROLES, default="Backend Developer")
     if role == "Custom…":
         # Conditional UI: this text input only exists while "Custom…" is
         # selected — the `if` re-decides on every rerun.
         role = st.text_input("Enter your job role", placeholder="e.g. DevOps Engineer")
     role = role or "Backend Developer"
 
+    # st.divider() draws a horizontal rule — visually separating each
+    # setting group so the sidebar reads as distinct sections, not one
+    # long wall of chips.
+    st.divider()
+
     seniority = (
-        st.pills("Seniority", ["Junior", "Mid-level", "Senior"], default="Mid-level")
+        st.pills("📈 Seniority", ["Junior", "Mid-level", "Senior"], default="Mid-level")
         or "Mid-level"
     )
 
+    st.divider()
+
     persona = (
         st.pills(
-            "Interviewer style",
+            "🎭 Interviewer style",
             ["Friendly Coach", "Neutral Professional", "Tough Bar-Raiser"],
             default="Friendly Coach",
         )
         or "Friendly Coach"
     )
 
-    if st.button("Start new interview"):
+    st.divider()
+
+    # use_container_width stretches the button to the sidebar's full width,
+    # making the primary action easy to hit.
+    if st.button("🔄 Start new interview", type="primary", use_container_width=True):
         st.session_state.messages = []
         st.rerun()
 
