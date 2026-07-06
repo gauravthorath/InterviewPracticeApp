@@ -22,7 +22,13 @@ if not API_KEY:
 # OpenRouter clones the OpenAI API shape, so the official openai client
 # works as-is — we only point base_url at OpenRouter.
 client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=API_KEY)
-MODEL = "openai/gpt-5-mini"
+
+# Models allowed by the course spec (all reached through the one OpenRouter API).
+MODELS = [
+    "openai/gpt-5-mini",  # recommended default
+    "openai/gpt-5-nano",  # cheaper
+    "openai/gpt-5",  # higher capability
+]
 
 # --- Sidebar: interview configuration -------------------------------------
 # Convention: sidebar = settings, main area = the conversation itself.
@@ -71,6 +77,66 @@ with st.sidebar:
 
     st.divider()
 
+    # --- Advanced settings (collapsed by default) --------------------------
+    # Interview setup above is for every user; LLM knobs are developer
+    # territory. An st.expander keeps them one click away without
+    # cluttering the main experience (Medium optionals #1 and #9).
+    with st.expander("⚙️ Advanced settings"):
+        model = st.selectbox(
+            "Model",
+            MODELS,
+            help="mini = balanced default · nano = cheapest · gpt-5 = strongest",
+        )
+        temperature = st.slider(
+            "Temperature",
+            0.0,
+            2.0,
+            0.7,
+            0.1,
+            help="How the next word is sampled: low = focused and repeatable, "
+            "high = creative and varied. ~0.7 suits conversation.",
+        )
+        top_p = st.slider(
+            "Top-p",
+            0.0,
+            1.0,
+            1.0,
+            0.05,
+            help="Nucleus sampling: only the most likely words whose "
+            "probabilities sum to p are considered. Tune this OR "
+            "temperature, rarely both.",
+        )
+        frequency_penalty = st.slider(
+            "Frequency penalty",
+            -2.0,
+            2.0,
+            0.0,
+            0.1,
+            help="Positive values discourage the model from repeating words "
+            "it has already used a lot.",
+        )
+        presence_penalty = st.slider(
+            "Presence penalty",
+            -2.0,
+            2.0,
+            0.0,
+            0.1,
+            help="Positive values nudge the model toward new topics instead "
+            "of revisiting ones already mentioned.",
+        )
+        max_tokens = st.slider(
+            "Max reply tokens",
+            512,
+            8192,
+            2048,
+            256,
+            help="Hard cap on reply length — a cost control. Reasoning "
+            "models spend part of this budget thinking, so don't set "
+            "it too low or replies may come back empty.",
+        )
+
+    st.divider()
+
     # use_container_width stretches the button to the sidebar's full width,
     # making the primary action easy to hit.
     if st.button("🔄 Start new interview", type="primary", use_container_width=True):
@@ -113,9 +179,14 @@ if user_input := st.chat_input("Your answer…"):
     try:
         with st.spinner("Interviewer is thinking…"):
             response = client.chat.completions.create(
-                model=MODEL,
+                model=model,
                 messages=[{"role": "system", "content": system_prompt}]
                 + st.session_state.messages,
+                temperature=temperature,
+                top_p=top_p,
+                frequency_penalty=frequency_penalty,
+                presence_penalty=presence_penalty,
+                max_tokens=max_tokens,
             )
         reply = response.choices[0].message.content
         st.session_state.messages.append({"role": "assistant", "content": reply})
