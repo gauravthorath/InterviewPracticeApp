@@ -9,3 +9,6 @@ __pycache__/
 
 # Personal study notes — not part of the submission
 LEARNING.md
+
+# Local test-run records — not part of the submission
+TEST_RESULTS.*
