@@ -7,8 +7,11 @@
 # Python bytecode cache
 __pycache__/
 
-# Personal study notes — not part of the submission
+# Personal study notes
 LEARNING.md
 
-# Local test-run records — not part of the submission
+# Assignment brief (local only)
+115.md
+
+# Local test-run records
 TEST_RESULTS.*

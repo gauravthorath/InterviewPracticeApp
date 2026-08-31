@@ -12,18 +12,7 @@ API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 st.title("Interview Practice 🎤")
 
-if not API_KEY:
-    st.error(
-        "Missing OPENROUTER_API_KEY. Copy `.env.example` to `.env` and add "
-        "your key from https://openrouter.ai/keys, then reload."
-    )
-    st.stop()  # halt the script here — nothing below runs without a key
-
-# OpenRouter clones the OpenAI API shape, so the official openai client
-# works as-is — we only point base_url at OpenRouter.
-client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=API_KEY)
-
-# Models allowed by the course spec (all reached through the one OpenRouter API).
+# Models via OpenRouter (OpenAI-compatible).
 MODELS = [
     "openai/gpt-5-mini",  # recommended default
     "openai/gpt-5-nano",  # cheaper
@@ -32,11 +21,10 @@ MODELS = [
 
 
 # --- The five system-prompt techniques -------------------------------------
-# Course requirement: write >=5 system prompts using DIFFERENT prompting
-# techniques and see which works best. Each function below returns a full
-# system prompt for the CURRENT sidebar settings, so the reviewer can switch
-# techniques live and compare. They share the same task (ask one question ->
-# give feedback -> ask the next); only the prompting *technique* differs.
+# Each function returns a full system prompt for the current sidebar
+# settings so you can switch techniques live and compare. They share the
+# same task (ask one question → give feedback → ask the next); only the
+# prompting *technique* differs.
 def _base(role, seniority, persona):
     return (
         f"You are a {persona} interviewer conducting a mock job interview for a "
@@ -130,15 +118,33 @@ HARDENING = (
     "unrelated to interview practice."
 )
 
-# Cap on the pasted job description (Medium optional #6). It rides along in
-# the system prompt of EVERY API call — the API is stateless — so an unbounded
-# paste would multiply the token cost of the whole interview.
+# Cap on the pasted job description. It rides along in the system prompt
+# of EVERY API call — the API is stateless — so an unbounded paste would
+# multiply the token cost of the whole interview.
 MAX_JOB_DESCRIPTION_CHARS = 6000
 
 # --- Sidebar: interview configuration -------------------------------------
 # Convention: sidebar = settings, main area = the conversation itself.
+MAX_TURNS_PER_SESSION = 20
+MAX_COMPLETION_TOKENS = 2048
+
+if "api_calls" not in st.session_state:
+    st.session_state.api_calls = 0
+
 with st.sidebar:
     st.header("Interview setup")
+    visitor_key = st.text_input(
+        "OpenRouter API key",
+        type="password",
+        help="Used only in this browser tab. Not saved to disk. "
+        "Get a key at https://openrouter.ai/keys",
+        placeholder="sk-or-v1-…",
+    )
+    st.caption(
+        f"Cost guard: {MAX_TURNS_PER_SESSION} replies per session, "
+        f"max {MAX_COMPLETION_TOKENS} tokens per reply."
+    )
+    st.divider()
 
     ROLES = [
         "Backend Developer",
@@ -182,9 +188,9 @@ with st.sidebar:
 
     st.divider()
 
-    # Medium optional #6: paste a real job posting and the interviewer tailors
-    # its questions to it. st.text_area is a multi-line st.text_input — returns
-    # "" (never None) when empty, so the fold-in below can just check .strip().
+    # Paste a real job posting and the interviewer tailors its questions to
+    # it. st.text_area is a multi-line st.text_input — returns "" (never None)
+    # when empty, so the fold-in below can just check .strip().
     job_description = st.text_area(
         "📋 Job description (optional)",
         placeholder="Paste a real job posting and the questions will target "
@@ -200,10 +206,10 @@ with st.sidebar:
     # --- Advanced settings (collapsed by default) --------------------------
     # Interview setup above is for every user; LLM knobs are developer
     # territory. An st.expander keeps them one click away without
-    # cluttering the main experience (Medium optionals #1 and #9).
+    # cluttering the main experience.
     with st.expander("⚙️ Advanced settings"):
-        # Prompt technique lives here (developer territory) so the reviewer can
-        # switch between the 5 techniques live and compare their behaviour.
+        # Prompt technique lives here so you can switch between the five
+        # techniques live and compare their behaviour.
         technique = st.selectbox(
             "Prompt technique",
             list(TECHNIQUES),
@@ -255,7 +261,7 @@ with st.sidebar:
         max_tokens = st.slider(
             "Max reply tokens",
             512,
-            8192,
+            MAX_COMPLETION_TOKENS,
             2048,
             256,
             help="Hard cap on reply length — a cost control. Reasoning "
@@ -269,7 +275,25 @@ with st.sidebar:
     # making the primary action easy to hit.
     if st.button("🔄 Start new interview", type="primary", use_container_width=True):
         st.session_state.messages = []
+        st.session_state.api_calls = 0
         st.rerun()
+
+api_key = (visitor_key or "").strip() or API_KEY
+if not api_key:
+    st.info(
+        "Paste an OpenRouter API key in the sidebar to start a live interview. "
+        "Without a key the app will not call any model."
+    )
+    st.stop()
+
+if st.session_state.api_calls >= MAX_TURNS_PER_SESSION:
+    st.error(
+        f"This session hit the {MAX_TURNS_PER_SESSION}-reply limit "
+        "(API cost guard). Click Start new interview or refresh the page."
+    )
+    st.stop()
+
+client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=api_key)
 
 # --- System prompt ----------------------------------------------------------
 # The model's standing instructions, rebuilt from the sidebar on every rerun
@@ -369,10 +393,11 @@ if user_input := st.chat_input("Your answer…"):
                 top_p=top_p,
                 frequency_penalty=frequency_penalty,
                 presence_penalty=presence_penalty,
-                max_tokens=max_tokens,
+                max_tokens=min(max_tokens, MAX_COMPLETION_TOKENS),
             )
         reply = response.choices[0].message.content
         st.session_state.messages.append({"role": "assistant", "content": reply})
+        st.session_state.api_calls += 1
         st.rerun()  # repaint so the new messages appear in the history above
     except Exception as e:
         # Don't crash the app on network/API hiccups — surface the error and
