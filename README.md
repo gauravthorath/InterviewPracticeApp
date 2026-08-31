@@ -2,7 +2,7 @@
 
 A mock interviewer. Pick a job role, seniority and interviewer style, optionally paste a real job posting, and the interviewer asks one question at a time, gives feedback, and continues.
 
-**Public demo (no API key):** [interview-practice-app on Vercel](https://github.com/gauravthorath/InterviewPracticeApp) — fixture replies so you can try the flow. Paste your own [OpenRouter](https://openrouter.ai/keys) key for a live model interview. The key stays in this browser tab.
+**Public demo (no API key):** [interview-practice-app-five.vercel.app](https://interview-practice-app-five.vercel.app) — fixture replies so you can try the flow. Paste your own [OpenRouter](https://openrouter.ai/keys) key for a live model interview. The key stays in this browser tab.
 
 The Python Streamlit app is still here for local use.
 
