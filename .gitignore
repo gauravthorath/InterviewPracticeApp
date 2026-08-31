@@ -15,3 +15,26 @@ LEARNING.md
 
 # Local test-run records
 TEST_RESULTS.*
+
+# Next.js (public Vercel demo)
+node_modules/
+.next/
+.vercel
+next-env.d.ts
+tsconfig.tsbuildinfo
+
+
+# Virtual environment — machine-specific, recreated with `uv sync`
+.venv/
+
+# Python bytecode cache
+__pycache__/
+
+# Personal study notes
+LEARNING.md
+
+# Assignment brief (local only)
+115.md
+
+# Local test-run records
+TEST_RESULTS.*

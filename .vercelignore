@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+.venv
+__pycache__
+node_modules
+.next
+.vercel
+LEARNING.md
+115.md
